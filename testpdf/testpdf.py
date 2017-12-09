@@ -23,7 +23,8 @@ class MainWindow(QDialog):
 
     def runSearch(self):
         listaplik={}
-        phrase = self.ui.lineEdit_2.text()
+        phrase = unicode(self.ui.lineEdit_2.text())
+        phrase = phrase.encode("utf-8")
         print phrase
         path=self.ui.lineEdit.text()
         folder=os.listdir(path)
