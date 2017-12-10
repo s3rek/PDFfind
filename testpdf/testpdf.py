@@ -4,10 +4,10 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 from cStringIO import StringIO
 import re, os
-from Tkinter import *
 import tkFileDialog as filedialog
 from PyQt4.QtGui import *
 from gui import Ui_Dialog
+import urllib
 
 class MainWindow(QDialog):
     def __init__(self):
@@ -18,6 +18,9 @@ class MainWindow(QDialog):
         self.ui.pushButton.clicked.connect(self.choosePath)
         self.ui.SearchButt.clicked.connect(self.runSearch)
         self.ui.WholeWordSwitch.clicked.connect(self.WholeWord)
+        self.ui.CaseSwitch.clicked.connect(self.MatchCase)
+        self.ui.RexExSwitch.clicked.connect(self.RegEx)
+        self.ui.WynTable.cellClicked.connect(self.OpenFile)
 
 
 
@@ -63,7 +66,7 @@ class MainWindow(QDialog):
                 przec=starytextlen-nowytextlen
             else:
                 przec=0
-            wyn = self.Searcher(phrase, text[przec:], self.WholeWord() )
+            wyn = self.Searcher(phrase, text[przec:], self.WholeWord(), self.RegEx(), self.MatchCase())
             if wyn:
                 listapage.append(pagenum)
                 listaplik.update({path:listapage})
@@ -73,24 +76,24 @@ class MainWindow(QDialog):
         retstr.close()
      
 
-    def Searcher(self, phrase, text, wholeWord):
-        caseSense=False
-        regexoff=False
-        flag=None
+    def Searcher(self, phrase, text, wholeWord, regex, caseSense):
+        flags=re.UNICODE
+        print ("caseSense : %s" % caseSense)
+        print ("regex : %s" % regex)
+        print ("wholeword : %s" % wholeWord)
         if caseSense is False:
-            flag=re.IGNORECASE
+            flags=re.UNICODE and re.IGNORECASE
         else:
             pass
         if wholeWord is True:
             phrase=r'\b'+phrase+r'\b'
         else:
             pass
-        if regexoff is True:
-            wyn=text.find(phrase)
-            if wyn==-1:
-                wyn=None
+        if regex is False:
+            query=re.compile(r"("+phrase+r")", flags)
+            wyn=query.findall(text)
         else:
-            query=re.compile(phrase, re.UNICODE or flag)
+            query=re.compile(phrase, flags)
             wyn=query.findall(text)
         try:
             print wyn.group(0)
@@ -113,6 +116,11 @@ class MainWindow(QDialog):
             self.ui.WynTable.setItem(i,1,strona)
             i+=1
 
+    def OpenFile(self,row, column):
+        filepath= unicode(self.ui.WynTable.itemAt(row, column).text())
+        print filepath
+        os.startfile(r'"'+filepath+r'"')
+
     def choosePath(self):
         foldername = str(QFileDialog.getExistingDirectory(self, "Wybierz katalog"))
         print foldername
@@ -123,8 +131,21 @@ class MainWindow(QDialog):
             wholeWord=True
         else:
             wholeWord=False
-        print ("wholeword : %s" % wholeWord)
         return wholeWord
+
+    def RegEx(self):
+        if self.ui.RexExSwitch.isChecked():
+            regex=True
+        else:
+            regex=False
+        return regex
+
+    def MatchCase(self):
+        if self.ui.CaseSwitch.isChecked():
+            caseSense=True
+        else:
+            caseSense=False
+        return caseSense
 
 
 
