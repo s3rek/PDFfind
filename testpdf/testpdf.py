@@ -7,13 +7,15 @@ import re, os
 import tkFileDialog as filedialog
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
-from gui import Ui_Dialog
+from PyQt4 import uic
+from gui3 import Ui_MainWindow
 
 
-class MainWindow(QDialog):
+class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.ui = Ui_Dialog()
+        self.ui = Ui_MainWindow()
+        #self.ui = uic.loadUi('gui.ui', self)
         self.ui.setupUi(self)
         self.thread = Worker()
         self.ui.closeButton.clicked.connect(self.close)
@@ -55,11 +57,17 @@ class MainWindow(QDialog):
         print "MatchCase is %s" % caseSense
         return caseSense
 
+    def MaxDepth(self):
+        index = self.ui.depthField.currentIndex()
+        if index == 6:
+            maxdepth = 999
+        else:
+            maxdepth = index
+        return maxdepth
+
     def populateTable(self, listaplik):
         self.ui.WynTable.setRowCount(len(listaplik))
         print len(listaplik)
-        self.ui.WynTable.setColumnCount(2)
-        self.ui.WynTable.setHorizontalHeaderLabels(['plik','strona'])
         i=0
         for key,value in listaplik.iteritems():
             #print key,value
@@ -78,7 +86,8 @@ class MainWindow(QDialog):
     def danedostart(self):
         phrase = unicode(self.ui.lineEdit_2.text())
         path=self.ui.lineEdit.text()
-        self.thread.ruszaj(phrase, path, self.WholeWord(), self.RegEx(), self.MatchCase())
+        maxdepth =self.MaxDepth()
+        self.thread.ruszaj(phrase, path, self.WholeWord(), self.RegEx(), self.MatchCase(), maxdepth)
 
 
 
@@ -89,27 +98,29 @@ class Worker(QThread):
         QThread.__init__(self, parent)
         self.exiting = False
 
-    def ruszaj(self, phrase, path, wholeword, regex, casesense):
+    def ruszaj(self, phrase, path, wholeword, regex, casesense, maxdepth):
         self.phrase = phrase
         self.path = path
         self.casesense = casesense
         self.regex = regex
         self.wholeword = wholeword
+        self.maxdepth = maxdepth
         self.start()
-
 
     def run(self):
         listaplik={}
         print self.phrase
-        folder=os.listdir(self.path)
-        for plik in folder:
-            #print foldername+"/"+plik
-            print plik
-            if plik.endswith(".pdf"):
-                self.convert_pdf_to_txt(self.path+r"/"+plik, self.phrase, listaplik)
-                self.emit(SIGNAL("output(PyQt_PyObject)"),listaplik)       
+        #folder=os.listdir(self.path)
+        for root,dirs,files in os.walk(str(self.path)):
+            print root
+            if root.count(os.sep) >= self.maxdepth+self.path.count(os.sep):
+                del dirs[:]
+            for name in files:
+                    sciezka =os.path.join(root, name)
+                    if sciezka.endswith(".pdf"):
+                        self.convert_pdf_to_txt(sciezka, self.phrase, listaplik)
+                        self.emit(SIGNAL("output(PyQt_PyObject)"),listaplik)
         print listaplik
-        #self.populateTable(listaplik)
 
     def convert_pdf_to_txt(self, path, phrase, listaplik):
         rsrcmgr = PDFResourceManager()
@@ -154,7 +165,7 @@ class Worker(QThread):
         print ("regex : %s" % regex)
         print ("wholeword : %s" % wholeWord)
         if caseSense is False:
-            flags=re.UNICODE or re.IGNORECASE
+            flags |= re.IGNORECASE
         else:
             pass
         if wholeWord is True:
