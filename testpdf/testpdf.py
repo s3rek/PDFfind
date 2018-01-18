@@ -18,18 +18,20 @@ class MainWindow(QMainWindow):
         #self.ui = uic.loadUi('gui.ui', self)
         self.ui.setupUi(self)
         self.thread = Worker()
-        self.ui.closeButton.clicked.connect(self.close)
+        #self.ui.closeButton.clicked.connect(self.thread.stop)
         self.ui.pushButton.clicked.connect(self.choosePath)
         self.ui.WholeWordSwitch.clicked.connect(self.WholeWord)
         self.ui.CaseSwitch.clicked.connect(self.MatchCase)
         self.ui.RexExSwitch.clicked.connect(self.RegEx)
         self.ui.WynTable.cellClicked.connect(self.OpenFile)
 
+        self.connect(self.ui.closeButton, SIGNAL("clicked()"), self.thread.stop)
         self.connect(self.ui.SearchButt, SIGNAL("clicked()"), self.danedostart)
         self.connect(self.thread, SIGNAL("output(PyQt_PyObject)"), self.populateTable)
+        self.connect(self.thread, SIGNAL("noresult(PyQt_PyObject)"), self.PopUp)
 
     def choosePath(self):
-        foldername = str(QFileDialog.getExistingDirectory(self, "Wybierz katalog"))
+        foldername = unicode(QFileDialog.getExistingDirectory(self, "Wybierz katalog"))
         print foldername
         self.ui.lineEdit.setText(foldername)
 
@@ -77,6 +79,10 @@ class MainWindow(QMainWindow):
             self.ui.WynTable.setItem(i,1,strona)
             i+=1
 
+    def PopUp(self, listaplik):
+        if listaplik=={}:
+            QMessageBox.about(QMainWindow(), "Uwaga!","Nie znaleziono frazy.")
+
     def OpenFile(self,row, column):
         filepath= unicode(self.ui.WynTable.item(row, column).text())
         print filepath
@@ -87,16 +93,19 @@ class MainWindow(QMainWindow):
         phrase = unicode(self.ui.lineEdit_2.text())
         path=self.ui.lineEdit.text()
         maxdepth =self.MaxDepth()
+        self.thread.runs= True
         self.thread.ruszaj(phrase, path, self.WholeWord(), self.RegEx(), self.MatchCase(), maxdepth)
-
-
 
 
 class Worker(QThread):
 
     def __init__(self, parent = None):
         QThread.__init__(self, parent)
-        self.exiting = False
+        self.exiting = False #usunac?????
+        self.runs = True
+
+    def stop(self):
+        self.runs = False
 
     def ruszaj(self, phrase, path, wholeword, regex, casesense, maxdepth):
         self.phrase = phrase
@@ -110,17 +119,17 @@ class Worker(QThread):
     def run(self):
         listaplik={}
         print self.phrase
-        #folder=os.listdir(self.path)
-        for root,dirs,files in os.walk(str(self.path)):
+        for root,dirs,files in os.walk(unicode(self.path)):
             print root
             if root.count(os.sep) >= self.maxdepth+self.path.count(os.sep):
                 del dirs[:]
             for name in files:
-                    sciezka =os.path.join(root, name)
-                    if sciezka.endswith(".pdf"):
+                sciezka =os.path.join(root, name)
+                if sciezka.endswith(".pdf") and self.runs:
                         self.convert_pdf_to_txt(sciezka, self.phrase, listaplik)
                         self.emit(SIGNAL("output(PyQt_PyObject)"),listaplik)
         print listaplik
+        self.emit(SIGNAL("noresult(PyQt_PyObject)"),listaplik)
 
     def convert_pdf_to_txt(self, path, phrase, listaplik):
         rsrcmgr = PDFResourceManager()
@@ -173,7 +182,8 @@ class Worker(QThread):
         else:
             pass
         if regex is False:
-            query=re.compile(r"("+phrase+r")", flags)
+            phrase=re.escape(phrase)
+            query=re.compile(phrase, flags)
             wyn=query.findall(text)
         else:
             query=re.compile(phrase, flags)

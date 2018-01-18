@@ -172,7 +172,7 @@ class Ui_MainWindow(object):
         self.WholeWordSwitch.setText(_translate("MainWindow", "Cały wyraz", None))
         self.CaseSwitch.setText(_translate("MainWindow", "Z uwzględnieniem wielkości liter", None))
         self.label.setText(_translate("MainWindow", "Szukaj w:", None))
-        self.closeButton.setText(_translate("MainWindow", "Anuluj", None))
+        self.closeButton.setText(_translate("MainWindow", "Stop", None))
         self.SearchButt.setText(_translate("MainWindow", "Szukaj", None))
         self.RexExSwitch.setText(_translate("MainWindow", "Wyrażenia regularne", None))
         self.label_2.setText(_translate("MainWindow", "Szukany wyraz:", None))
